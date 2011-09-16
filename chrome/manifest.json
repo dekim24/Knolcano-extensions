@@ -1,0 +1,12 @@
+{
+  "name": "Knolcano",
+  "version": "0.1",
+  "omnibox": {"keyword" : "knolcano"},
+  "description": "Knolcano.com helper extension",
+  "background_page": "background.html",
+  "options_page": "options.html",
+  "permissions": [
+    "tabs",
+    "contextMenus"
+  ]
+}

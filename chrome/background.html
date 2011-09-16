@@ -1,0 +1,182 @@
+<html>
+	<head>
+  	<script>
+  		//global variables
+		var _ADDRESS = "http://cyrus-stollers-macbook-pro.local:3000/"
+  		var suffixList = ["Jr.", "Sr.", "Jr", "Sr", "III", "IV", "V", "M.D.", "MD", "D.O.", "DO", "J.D.", "JD",
+  					"Esq.", "esq.", "Esquire", "esquire", "CPA", "Ph.D", "PhD", "D.Phil.", "DPhil",
+					"LL.M.", "LLM", "L.L.M."];
+  		// function to concatenate an array of strings with spaces in between each string
+  		// STRING array: the array of strings you want to combine
+  		// INTEGER limit: the number of elements in the string (counting from 0) you want to combine, starting from the left
+  		function concatSpaces(array, limit) {
+  			var finalString = array[0];
+  			var i = 1;
+  			while (i <= limit) {
+  				finalString = finalString + " " + array[i];
+  				i++
+  			}
+  			return finalString;
+  		}
+		
+		///navigating to a new url in the current window
+		function navigate(url) {
+			chrome.tabs.getSelected(null, function(tab) {
+			chrome.tabs.update(tab.id, {url: url});
+			});
+		}
+		
+		//reset the default omnibox suggestion
+		function resetDefaultSuggestion() {
+			chrome.omnibox.setDefaultSuggestion({
+			description: 'search Knolcano'
+			});
+		}
+  		// to create the URL for a new publication in Knolcano with the contents of the current tab
+  		function createPub(tab) {
+  			var pubURL = _ADDRESS + "publications/new?url="+encodeURIComponent(tab.url)+"&title="
+			+encodeURIComponent(tab.title.replace(/[%E2%80%98|%E2%80%99|%E2%80%9A]/g,"'").replace(/[%E2%80%9C|%E2%80%9D|%E2%80%9E]/g,"\"").replace(/%E2%80%A6/g,"...").replace(/[%E2%80%93|%E2%80%94]/g,"-").replace(/%CB%86/g,"^").replace(/%E2%80%B9/g,"<").replace(/%E2%80%BA/g,">").replace(/[%CB%9C|%C2%A0]/g,"%20"));
+  			return pubURL;
+  		}
+  		
+  		//to create the URL for a new organization with current selection (if exists) and current tab URL
+  		function createOrg(org, url) {
+  			var orgURL = _ADDRESS + "organizations/new?name="+org+"&url="+encodeURIComponent(url);
+  			return orgURL;
+  		}
+  		
+  		//to create a new organization
+  		function orgOnClick(info, tab) {
+			var orgArray = makeOrgURL(info, tab);
+			openWindow(orgArray[0]);
+			if (localStorage["orgSearch"] == "yes" && typeof orgArray[1] != "undefined") {
+				chrome.tabs.create({url:_ADDRESS + "search?q=" + orgArray[1]})
+			}
+  		}
+		
+		//to create a new organization URL
+		function makeOrgURL(info, tab) {
+			var orgURL = "";
+			var sel = info.selectionText;
+  			var clickedUrl = info.linkUrl;
+  			if (!clickedUrl && !sel) {
+  				var orgURL = _ADDRESS + "organizations/new";
+  			}
+  			else if (!sel) {
+  				var orgURL = createOrg("", clickedUrl);
+  			}
+  			else {
+  				var orgURL = createOrg(sel, "please enter URL");
+  			}
+			return [orgURL, sel];
+		}
+		
+		//splitting names into first and last name, with some checks
+		function formatNames(sel) {		
+			var selArray = sel.split(" ");
+			var dummyLength = selArray.length - 1;
+			var firstName="";
+			var lastName=selArray[dummyLength];
+			var i = 0;
+			var j = 0;
+			var suffixExists = false;
+			while (j < suffixList.length - 1) {
+				if (lastName == suffixList[j]) {
+					lastName = selArray[dummyLength - 1] + " " + lastName;
+					var suffixExists = true;
+					break;
+				}
+  				else {
+  					j++;
+  				}
+  			}
+  			if (dummyLength == 0) {
+  				firstName = lastName;
+  				lastName = "";
+  			}
+  			else if (suffixExists) {
+  				dummyLength--;
+  				firstName = concatSpaces(selArray, dummyLength - 1);
+  			}
+  			else {
+  				firstName = concatSpaces(selArray, dummyLength - 1);
+  			}
+			return [firstName, lastName]
+		}
+  		
+		//to construct the "new person" URL
+		function makePersonURL(info, tab) {
+			var sel = info.selectionText;
+  			var curUrl = info.pageURL;
+  			if (!sel) {
+  				var personURL = _ADDRESS + "people/new";
+				var searchQuery;
+  			}
+  			else {
+				var nameArray = formatNames(sel);
+				firstName = nameArray[0];
+				lastName = nameArray[1];
+  				var personURL = _ADDRESS + "people/new?firstname="+firstName
+  					+"&lastname="+lastName;
+				var searchQuery = firstName + " " + lastName
+  			}
+			return [personURL, searchQuery];
+		}
+		
+		//change window creation behavior depending on user's preference
+		function openWindow(returnedUrl) {
+			if (localStorage.favMethod == "newWindow") {
+  				chrome.windows.create({url:returnedUrl});
+  			}
+  			else if (localStorage.favMethod == "curWindow") {
+  				navigate(returnedUrl);
+  			}
+  			else {
+  				chrome.tabs.create({url:returnedUrl});
+  			}
+		}
+		
+  		//to create a "new person"
+  		function personOnClick(info, tab) {
+			var personArray = makePersonURL(info, tab);
+			openWindow(personArray[0]);
+			if (localStorage["personSearch"] == "yes" && typeof personArray[1] != "undefined") {
+				chrome.tabs.create({url:_ADDRESS + "search?q=" + personArray[1]});
+			}
+  		};
+  		
+  		//to search
+  		function searchOnClick(info, tab) {
+  			var sel = info.selectionText;
+  			openWindow(_ADDRESS + "search?q=" + sel);
+  		}
+  		
+  		//create new publication
+  		function pubOnClick(info, tab) {
+  			openWindow(createPub(tab));
+  		}
+  		
+  		//creating context menu items
+  		chrome.contextMenus.create({"title": "Create a New Person", "onclick": personOnClick,
+  			"contexts": ["page", "selection"]}); 
+  		chrome.contextMenus.create({"title": "Create a New Organization", "onclick": orgOnClick,
+  			"contexts": ["page", "selection", "link"]});
+  		chrome.contextMenus.create({"title": "Create a New Publication", "onclick": pubOnClick,
+  			"contexts": ["page", "selection", "link"]});
+  		chrome.contextMenus.create({"title": "Search for '%s'", "onclick": searchOnClick,
+  			"contexts": ["selection"]});
+  		
+  		//omnibox search
+		resetDefaultSuggestion();
+		
+  		chrome.omnibox.onInputEntered.addListener(
+  			function(text) {
+			navigate(_ADDRESS + "search?q="+text);
+ 		});
+		
+		chrome.omnibox.onInputCancelled.addListener(function() {
+			resetDefaultSuggestion();
+		});
+  	</script>
+  	</head>
+</html>

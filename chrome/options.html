@@ -1,0 +1,63 @@
+<html>
+<head><title>Knolcano Options</title></head>
+<script type="text/javascript">
+
+// Saves options to localStorage.
+function save_options() {
+  var select = document.getElementById("method");
+  var method = select.children[select.selectedIndex].value;
+  localStorage["favMethod"] = method;
+  var select = document.getElementById("personSearch");
+  var personSearch = select.children[select.selectedIndex].value;
+  localStorage["personSearch"] = personSearch;
+  var select = document.getElementById("orgSearch");
+  var orgSearch = select.children[select.selectedIndex].value;
+  localStorage["orgSearch"] = orgSearch;
+
+  // Update status to let user know options were saved.
+  alert("Changes saved.");
+}
+
+// Restores select box state to saved value from localStorage.
+function restore_options() {
+  var favorite = localStorage["favMethod"];
+  if (!favorite) {
+    return;
+  }
+  var select = document.getElementById("method");
+  for (var i = 0; i < select.children.length; i++) {
+    var child = select.children[i];
+    if (child.value == favorite) {
+      child.selected = "true";
+      break;
+    }
+  }
+}
+
+</script>
+
+<body onload="restore_options()">
+
+<p>How to open windows:
+<select id="method">
+ <option value="newTab">new tab (default)</option>
+ <option value="newWindow">new window</option>
+ <option value="curWindow">current window</option>
+</select>
+</p>
+
+<p>Simultaneously search with person query? (opens in new tab)
+<select id="personSearch">
+  <option value="yes">yes (default)</option>
+  <option value="no">no</option>
+</select>
+</p>
+
+<p>Simultaneously search with organization query? (opens in new tab)
+<select id="orgSearch">
+  <option value="yes">yes (default)</option>
+  <option value="no">no</option>
+</select>
+<button onclick="save_options()">Save</button></p>
+</body>
+</html>
